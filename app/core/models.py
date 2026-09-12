@@ -6,7 +6,14 @@ class ProjectType(str, Enum):
     STATIC = "static"
     NODE = "node"
     PYTHON = "python"
+    JAVA = "java"
+    RUBY = "ruby"
+    PHP = "php"
+    DOTNET = "dotnet"
+    GO = "go"
+    RUST = "rust"
     DOCKER = "docker"
+    DOCKER_COMPOSE = "docker_compose"
     UNKNOWN = "unknown"
 
 class DetectorResult(BaseModel):
@@ -20,6 +27,15 @@ class DetectorResult(BaseModel):
     entrypoint: Optional[str] = None
     env_vars: Dict[str, str] = {}
     confidence: float = 0.0
+    is_backend_api: bool = False
+    api_endpoints: List[str] = []
+    docs_url: Optional[str] = None
+    # Connection bridge metadata
+    expected_backend_port: Optional[int] = None
+    uses_env_var_for_api: Optional[str] = None
+    proxy_config_detected: bool = False
+    source_rewrite_from: Optional[str] = None
+    source_rewrite_to: Optional[str] = None
 
 class RunConfig(BaseModel):
     repository_url: str
@@ -27,3 +43,6 @@ class RunConfig(BaseModel):
     detector_result: DetectorResult
     env_vars: Dict[str, str] = {}
     docker_image: Optional[str] = None
+    pinned_port: Optional[int] = None
+    source_rewrite_from: Optional[str] = None
+    source_rewrite_to: Optional[str] = None

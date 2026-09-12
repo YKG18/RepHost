@@ -3,3 +3,11 @@ __pycache__/
 *.pyc
 workspaces/
 .pytest_cache/
+scratch/
+test_repo/
+bin/
+output.log
+dist/
+build/
+*.spec
+

@@ -5,24 +5,31 @@ from app.core.models import ProjectType
 
 def test_static_detection(tmp_path: Path):
     (tmp_path / "index.html").touch()
-    result = detect_project(tmp_path)
-    assert result is not None
-    assert result.project_type == ProjectType.STATIC
-    assert result.framework == "HTML"
+    results = detect_project(tmp_path)
+    assert len(results) == 1
+    assert results[0].project_type == ProjectType.STATIC
+    assert results[0].framework == "HTML"
 
 def test_node_detection(tmp_path: Path):
     (tmp_path / "package.json").write_text('{"name": "test", "dependencies": {"vite": "1.0"}, "scripts": {"dev": "vite"}}')
-    result = detect_project(tmp_path)
-    assert result is not None
-    assert result.project_type == ProjectType.NODE
-    assert result.framework == "Vite"
-    assert result.package_manager == "npm"
+    results = detect_project(tmp_path)
+    assert len(results) == 1
+    assert results[0].project_type == ProjectType.NODE
+    assert results[0].framework == "Vite"
+    assert results[0].package_manager == "npm"
 
 def test_python_detection(tmp_path: Path):
     (tmp_path / "requirements.txt").write_text('fastapi\nuvicorn\n')
     (tmp_path / "main.py").touch()
-    result = detect_project(tmp_path)
-    assert result is not None
-    assert result.project_type == ProjectType.PYTHON
-    assert result.framework == "FastAPI"
-    assert "uvicorn" in result.run_command
+    results = detect_project(tmp_path)
+    assert len(results) == 1
+    assert results[0].project_type == ProjectType.PYTHON
+    assert results[0].framework == "FastAPI"
+    assert "uvicorn" in results[0].run_command
+
+def test_compose_detection(tmp_path: Path):
+    (tmp_path / "docker-compose.yml").write_text('version: "3"\nservices:\n  web:\n    image: nginx\n')
+    results = detect_project(tmp_path)
+    assert len(results) == 1
+    assert results[0].project_type == ProjectType.DOCKER_COMPOSE
+    assert results[0].framework == "Docker Compose"

@@ -2,6 +2,13 @@ from .base import Detector
 from .static import StaticDetector
 from .node import NodeDetector
 from .python import PythonDetector
+from .java import JavaDetector
+from .ruby import RubyDetector
+from .php import PhpDetector
+from .dotnet import DotnetDetector
+from .docker_compose import DockerComposeDetector
+from .go import GoDetector
+from .rust import RustDetector
 from typing import List, Optional
 from pathlib import Path
 from app.core.models import DetectorResult
@@ -30,8 +37,15 @@ def detect_project(root_path: Path) -> List[DetectorResult]:
     Supports multi-tier architectures (e.g. backend/ and frontend/ folders).
     """
     detectors: List[Detector] = [
+        DockerComposeDetector(),
         NodeDetector(),
         PythonDetector(),
+        JavaDetector(),
+        RubyDetector(),
+        PhpDetector(),
+        DotnetDetector(),
+        GoDetector(),
+        RustDetector(),
         StaticDetector()
     ]
     
@@ -39,26 +53,53 @@ def detect_project(root_path: Path) -> List[DetectorResult]:
     
     # 1. Check root first
     root_result = _detect_single_path(root_path, detectors)
-    if root_result and root_result.confidence > 0.5:
-        # High confidence at root (e.g. package.json in root). 
-        # Usually means a monolith or single-tier app.
+    from app.core.models import ProjectType
+    if root_result and root_result.project_type == ProjectType.DOCKER_COMPOSE:
         root_result.sub_path = "."
-        results.append(root_result)
-        # But we still check subdirectories for multi-tier (e.g. root has backend, frontend folder has UI)
-        # Wait, if root has a clear project, we might just use that. Let's still scan.
-        
-    # 2. Check 1-level deep subdirectories for distinct projects
-    for child in root_path.iterdir():
-        if child.is_dir() and not child.name.startswith(".") and child.name not in ["node_modules", "venv", "__pycache__", "scratch"]:
-            child_result = _detect_single_path(child, detectors)
-            # Only accept high-confidence subprojects to avoid false positives
-            if child_result and child_result.confidence > 0.5:
-                child_result.sub_path = child.name
-                results.append(child_result)
-                
-    # 3. Fallback: If no high-confidence projects found, see if root had a low-confidence one (e.g. Static File Server)
-    if not results and root_result:
-        root_result.sub_path = "."
-        results.append(root_result)
+        return [root_result]
 
-    return results
+    # 2. Check 1-level deep subdirectories for distinct projects
+    sub_results = []
+    manifests = [
+        "package.json", "requirements.txt", "Pipfile", "pyproject.toml",
+        "setup.py", "manage.py", "pom.xml", "build.gradle", "build.gradle.kts",
+        "Gemfile", "Cargo.toml", "go.mod", "composer.json", "Dockerfile"
+    ]
+    ignored_subdirs = {
+        "node_modules", "venv", ".venv", "__pycache__", "scratch", "target",
+        "build", "dist", "templates", "template", "views", "static", "media",
+        "assets", "public", "tests", "test", "spec", "migrations", "fixtures",
+        "locale", "locales", "config", "logs", "scripts", "docs", "documentation",
+        ".git", ".github", ".vscode", ".idea"
+    }
+
+    for child in root_path.iterdir():
+        if child.is_dir() and not child.name.startswith(".") and child.name.lower() not in ignored_subdirs:
+            child_result = _detect_single_path(child, detectors)
+            if child_result and child_result.confidence >= 0.7:
+                # If root was already detected with high confidence (e.g. Django, Rails, Next.js root),
+                # only accept a subfolder if it has its own explicit project manifest
+                # or is an explicit frontend directory (e.g. frontend/, client/, ui/, web/)
+                if root_result and root_result.confidence >= 0.8:
+                    has_own_manifest = any((child / m).exists() for m in manifests)
+                    is_known_frontend_dir = child.name.lower() in ("frontend", "client", "ui", "web", "app")
+                    if not (has_own_manifest or is_known_frontend_dir):
+                        continue
+
+                child_result.sub_path = child.name
+                sub_results.append(child_result)
+
+    # 3. Combine: If subprojects exist, root is only included if root itself has an explicit manifest
+    if sub_results:
+        root_has_manifest = any((root_path / m).exists() for m in manifests)
+        if root_result and root_result.confidence >= 0.8 and root_has_manifest:
+            root_result.sub_path = "."
+            return [root_result] + sub_results
+        return sub_results
+
+    # 4. Fallback: If no subprojects found, use root_result if available
+    if root_result:
+        root_result.sub_path = "."
+        return [root_result]
+
+    return []
