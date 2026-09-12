@@ -1,0 +1,6 @@
+typer
+pydantic
+psutil
+httpx
+GitPython
+pytest
