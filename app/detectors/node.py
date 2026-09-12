@@ -65,11 +65,28 @@ class NodeDetector(Detector):
         elif package_manager == "bun":
             run_command = ["bun", "run", run_script]
             
+        expected_ports = []
+        if framework == "Vite":
+            # Vite requires --host CLI flag to bind to 0.0.0.0 inside Docker.
+            # ENV HOST does NOT work for Vite.
+            if package_manager == "yarn":
+                run_command.extend(["--host", "0.0.0.0"])
+            else:
+                run_command.extend(["--", "--host", "0.0.0.0"])
+            expected_ports.append(5173)
+        elif framework == "Next.js":
+            if package_manager == "yarn":
+                run_command.extend(["-H", "0.0.0.0"])
+            else:
+                run_command.extend(["--", "-H", "0.0.0.0"])
+            expected_ports.append(3000)
+            
         return DetectorResult(
             project_type=ProjectType.NODE,
             framework=framework,
             package_manager=package_manager,
             install_command=[package_manager, "install"],
             run_command=run_command,
+            expected_ports=expected_ports,
             confidence=0.9
         )

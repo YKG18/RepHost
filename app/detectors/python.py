@@ -86,7 +86,7 @@ class PythonDetector(Detector):
             if entrypoint:
                 return "FastAPI", [
                     "python", "-m", "uvicorn", entrypoint,
-                    "--host", "0.0.0.0", "--port", "0",
+                    "--host", "0.0.0.0", "--port", "8000",
                 ]
 
         # -- Flask --
@@ -95,13 +95,15 @@ class PythonDetector(Detector):
             if not flask_app:
                 # Try to find it ourselves
                 flask_app = PythonDetector._find_flask_app(path, has_app)
-            return "Flask", ["python", "-m", "flask", "run", "--host", "0.0.0.0", "--port", "0"]
+            
+            cmd = ["python", "-m", "flask", "--app", flask_app, "run", "--host", "0.0.0.0", "--port", "8000"] if flask_app else ["python", "-m", "flask", "run", "--host", "0.0.0.0", "--port", "8000"]
+            return "Flask", cmd
 
         # -- Streamlit --
         if "streamlit" in req_content:
             entry = "app.py" if has_app else PythonDetector._find_streamlit_entry(path)
             if entry:
-                return "Streamlit", ["streamlit", "run", entry, "--server.port", "0"]
+                return "Streamlit", ["streamlit", "run", entry, "--server.port", "8000"]
 
         # -- Generic Python --
         if has_main:
@@ -272,12 +274,12 @@ class PythonDetector(Detector):
         install_cmd = ["pip", "install"] + third_party if third_party else []
 
         if found_framework == "Streamlit":
-            run_cmd = ["streamlit", "run", rel, "--server.port", "0", "--server.headless", "true"]
+            run_cmd = ["streamlit", "run", rel, "--server.port", "8000", "--server.headless", "true"]
         elif found_framework == "Flask":
-            run_cmd = ["python", rel]
+            run_cmd = ["python", "-m", "flask", "run", "--host", "0.0.0.0", "--port", "8000"]
         elif found_framework == "FastAPI":
             module = rel.replace("/", ".").replace(".py", "")
-            run_cmd = ["python", "-m", "uvicorn", f"{module}:app", "--host", "0.0.0.0", "--port", "0"]
+            run_cmd = ["python", "-m", "uvicorn", f"{module}:app", "--host", "0.0.0.0", "--port", "8000"]
         else:
             run_cmd = ["python", rel]
 

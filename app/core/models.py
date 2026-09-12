@@ -11,6 +11,7 @@ class ProjectType(str, Enum):
 
 class DetectorResult(BaseModel):
     project_type: ProjectType
+    sub_path: str = "."
     framework: Optional[str] = None
     package_manager: Optional[str] = None
     install_command: Optional[List[str]] = None
@@ -25,3 +26,4 @@ class RunConfig(BaseModel):
     workspace_path: str
     detector_result: DetectorResult
     env_vars: Dict[str, str] = {}
+    docker_image: Optional[str] = None
