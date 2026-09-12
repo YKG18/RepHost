@@ -20,8 +20,8 @@ from app.tunnel.manager import CloudflareTunnel
 # Neobrutalistic colors
 BG_COLOR = "#FFFFFF" # White background
 FG_COLOR = "#000000" # Black text
-ACCENT_COLOR = "#D97757" # Vibrant Orange
-BORDER_COLOR = "#111111"
+ACCENT_COLOR = "#FF5F15" # Vibrant Orange
+BORDER_COLOR = "#000000"
 
 ctk.set_appearance_mode("light")
 
@@ -61,11 +61,11 @@ class RepoHostGUI(ctk.CTk):
 
     def _build_ui(self):
         # Main container with border
-        self.main_container = ctk.CTkFrame(self, fg_color=BG_COLOR, border_width=2, border_color=BORDER_COLOR, corner_radius=5)
+        self.main_container = ctk.CTkFrame(self, fg_color=BG_COLOR, border_width=4, border_color=BORDER_COLOR, corner_radius=0)
         self.main_container.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
         
         # Title
-        self.title_label = ctk.CTkLabel(self.main_container, text="REPHOST", font=self.title_font, text_color=FG_COLOR)
+        self.title_label = ctk.CTkLabel(self.main_container, text="REPOHOST", font=self.title_font, text_color=FG_COLOR)
         self.title_label.pack(pady=(20, 10))
         
         # Top Frame (URL Input & Controls)
@@ -80,14 +80,14 @@ class RepoHostGUI(ctk.CTk):
             text_color=FG_COLOR,
             border_width=3,
             border_color=BORDER_COLOR,
-            corner_radius=50,
+            corner_radius=0,
             height=45
         )
         self.url_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 10))
         
         self.host_btn = ctk.CTkButton(
             top_frame, 
-            text="HOST REPOSITORY", 
+            text="  HOST REPOSITORY  ", 
             command=self.start_hosting,
             font=self.main_font,
             fg_color=ACCENT_COLOR,
