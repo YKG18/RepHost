@@ -24,13 +24,24 @@ class PythonDetector(Detector):
         
         req_content = ""
         if has_reqs:
-            with open(requirements, 'r', encoding='utf-8') as f:
-                req_content = f.read().lower()
+            try:
+                with open(requirements, 'r', encoding='utf-8') as f:
+                    req_content = f.read().lower()
+            except UnicodeDecodeError:
+                try:
+                    with open(requirements, 'r', encoding='utf-16') as f:
+                        req_content = f.read().lower()
+                except Exception:
+                    pass
+            except Exception:
+                pass
                 
         if "fastapi" in req_content or "uvicorn" in req_content:
             framework = "FastAPI"
             if has_main:
-                run_cmd = ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "0"]
+                run_cmd = ["python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "0"]
+            elif has_app:
+                run_cmd = ["python", "-m", "uvicorn", "app:app", "--host", "0.0.0.0", "--port", "0"]
         elif "flask" in req_content:
             framework = "Flask"
             run_cmd = ["python", "-m", "flask", "run"]

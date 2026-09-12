@@ -11,7 +11,7 @@ class NodeDetector(Detector):
             return None
             
         try:
-            with open(package_json_path, 'r', encoding='utf-8') as f:
+            with open(package_json_path, 'r', encoding='utf-8', errors='ignore') as f:
                 package_data = json.load(f)
         except Exception:
             package_data = {}
