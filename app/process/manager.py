@@ -4,7 +4,7 @@ import psutil
 import time
 from typing import Optional, List
 from pathlib import Path
-from app.core.models import RunConfig
+from app.core.models import RunConfig, ProjectType
 
 class ProcessManager:
     def __init__(self, config: RunConfig):
@@ -23,6 +23,11 @@ class ProcessManager:
         env = os.environ.copy()
         env.update(self.config.env_vars)
         
+        # On Windows, Node.js tools (npm, npx, yarn) are .cmd batch files
+        # that require shell=True for subprocess to resolve them.
+        use_shell = (os.name == "nt" and
+                     self.config.detector_result.project_type == ProjectType.NODE)
+        
         try:
             self.process = subprocess.Popen(
                 run_cmd,
@@ -30,14 +35,15 @@ class ProcessManager:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
-                env=env
+                env=env,
+                shell=use_shell,
             )
             return True
         except Exception as e:
             print(f"Failed to start process: {e}")
             return False
 
-    def get_listening_ports(self, max_wait: int = 15) -> List[int]:
+    def get_listening_ports(self, max_wait: int = 30) -> List[int]:
         if not self.process:
             return []
             
@@ -45,6 +51,11 @@ class ProcessManager:
         start_time = time.time()
         
         while time.time() - start_time < max_wait:
+            # Check if the process has already crashed
+            if self.process.poll() is not None:
+                self._dump_output("Process exited prematurely")
+                return []
+
             ports = set()
             try:
                 parent = psutil.Process(self.process.pid)
@@ -54,7 +65,8 @@ class ProcessManager:
                         if conn.status == 'LISTEN':
                             ports.add(conn.laddr.port)
             except psutil.NoSuchProcess:
-                break
+                self._dump_output("Process disappeared")
+                return []
                 
             if ports:
                 self.detected_ports = list(ports)
@@ -62,7 +74,34 @@ class ProcessManager:
                 
             time.sleep(1)
             
+        # Timed out — show what the process printed
+        self._dump_output("Timed out waiting for a listening port")
         return []
+
+    def _dump_output(self, reason: str):
+        """Read whatever the process wrote to stdout/stderr and print it."""
+        if not self.process or not self.process.stdout:
+            return
+        lines = []
+        try:
+            # Read available output (non-blocking)
+            import select
+            while True:
+                line = self.process.stdout.readline()
+                if not line:
+                    break
+                lines.append(line.rstrip())
+                if len(lines) > 50:  # Cap output
+                    break
+        except Exception:
+            pass
+
+        print(f"\n  {reason}.")
+        if lines:
+            print("  --- Application output ---")
+            for line in lines:
+                print(f"  {line}")
+            print("  --- End of output ---")
 
     def stop(self):
         if not self.process:

@@ -26,14 +26,20 @@ def main(repo_url: str):
     """
     Host a public GitHub repository locally.
     """
+    import urllib.parse
+    
+    # Strip query parameters (e.g., ?utm_source=...) which cause git clone to fail
+    parsed_url = urllib.parse.urlparse(repo_url)
+    clean_repo_url = urllib.parse.urlunparse(parsed_url._replace(query=""))
+    
     typer.echo(f"RepoHost\n")
-    typer.echo(f"-> Cloning repository: {repo_url}")
+    typer.echo(f"-> Cloning repository: {clean_repo_url}")
     
     workspace = Path(tempfile.mkdtemp(dir=WORKSPACES_DIR))
     manager = None
     
     try:
-        git.Repo.clone_from(repo_url, workspace)
+        git.Repo.clone_from(clean_repo_url, workspace)
         typer.echo("[+] Done")
         
         typer.echo("\n-> Detecting project")
@@ -45,10 +51,19 @@ def main(repo_url: str):
             
         typer.echo(f"[+] {detector_result.framework} / {detector_result.package_manager}")
         
+        # Ask for environment variables if detected
+        if detector_result.env_vars:
+            typer.echo("\nThis project appears to require environment variables.")
+            for key, val in detector_result.env_vars.items():
+                default_val = val if val else ""
+                user_input = typer.prompt(f"{key}", default=default_val, show_default=bool(default_val))
+                detector_result.env_vars[key] = user_input
+        
         config = RunConfig(
             repository_url=repo_url,
             workspace_path=str(workspace),
-            detector_result=detector_result
+            detector_result=detector_result,
+            env_vars=detector_result.env_vars,
         )
         
         typer.echo("\n-> Installing dependencies")

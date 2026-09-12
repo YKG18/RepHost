@@ -17,6 +17,7 @@ class DetectorResult(BaseModel):
     run_command: Optional[List[str]] = None
     expected_ports: List[int] = []
     entrypoint: Optional[str] = None
+    env_vars: Dict[str, str] = {}
     confidence: float = 0.0
 
 class RunConfig(BaseModel):
